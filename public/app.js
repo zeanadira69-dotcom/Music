@@ -280,6 +280,10 @@ window.onYouTubeIframeAPIReady = () => {
           applyPlaybackQuality();
           setTimeout(applyPlaybackQuality, 500);
           setTimeout(applyPlaybackQuality, 2000);
+          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+        }
+        if (e.data === YT.PlayerState.PAUSED) {
+          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
         }
         if (e.data === YT.PlayerState.BUFFERING) applyPlaybackQuality();
         document.body.classList.toggle('paused', e.data !== YT.PlayerState.PLAYING);
@@ -461,25 +465,40 @@ function startCurrent() {
   document.body.classList.add('has-player');
   document.title = `${s.title} • Rich Music`;
   applyTint(s.videoId || s.title);
+  
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: s.title, artist: s.artist || '',
-      artwork: s.thumbnail ? [{ src: s.thumbnail, sizes: '544x544' }] : [],
+      title: s.title, 
+      artist: s.artist || '',
+      album: 'Rich Music',
+      artwork: s.thumbnail ? [
+        { src: s.thumbnail, sizes: '512x512', type: 'image/jpeg' },
+        { src: s.thumbnail, sizes: '192x192', type: 'image/jpeg' }
+      ] : [],
     });
+    navigator.mediaSession.playbackState = 'playing';
     navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
     navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack(false));
-    navigator.mediaSession.setActionHandler('play', () => Player.yt && Player.yt.playVideo());
-    navigator.mediaSession.setActionHandler('pause', () => Player.yt && Player.yt.pauseVideo());
+    navigator.mediaSession.setActionHandler('play', () => {
+      if (Player.yt && Player.ready) {
+        Player.yt.playVideo();
+        navigator.mediaSession.playbackState = 'playing';
+      }
+    });
+    navigator.mediaSession.setActionHandler('pause', () => {
+      if (Player.yt && Player.ready) {
+        Player.yt.pauseVideo();
+        navigator.mediaSession.playbackState = 'paused';
+      }
+    });
   }
+
   loadLyrics(s);
   loadSponsorBlock(s.videoId);
-  // refresh related tab lazily
-  Player.relatedBrowseId = null; // stale — belongs to the previous song until fetchQueue returns
+  Player.relatedBrowseId = null; 
   Player.lyricsBrowseId = null;
   $('#related-list').innerHTML = '<div class="loading-note">Loading…</div>';
   Player._relatedLoaded = false;
-  // if the Related tab is currently open, reload it right away for the new song
-  // (small delay so fetchQueue for the new song has started first)
   if ($('#np-related').classList.contains('active') && !$('#nowplaying').classList.contains('hidden')) {
     setTimeout(() => loadRelated(true), 150);
   }
@@ -583,12 +602,10 @@ let _lastTick = null;
 setInterval(() => {
   if (!Player.yt || !Player.ready || !Player.current || !Player.yt.getDuration) return;
   const cur = Player.yt.getCurrentTime() || 0;
-  // local scrobble: accumulate listen time while playing
   const playing = Player.yt.getPlayerState && Player.yt.getPlayerState() === YT.PlayerState.PLAYING;
   const now = Date.now();
   if (playing && _lastTick) Library.addListenTime(Player.current.videoId, Math.min(2, (now - _lastTick) / 1000));
   _lastTick = now;
-  // SponsorBlock auto-skip
   if (playing && Player.sbEnabled && Player.sbSegments.length) {
     const seg = Player.sbSegments.find((g) => cur >= g.start && cur < g.end - 0.3);
     if (seg) {
@@ -625,7 +642,6 @@ function renderPlayButtons() {
   syncFloatWidget();
 }
 
-/* ================= SponsorBlock / votes / speed / video ================= */
 async function loadSponsorBlock(videoId) {
   Player.sbSegments = [];
   try {
@@ -651,8 +667,7 @@ function toggleSB() {
   toast(Player.sbEnabled ? 'SponsorBlock on' : 'SponsorBlock off');
 }
 
-/* ================= lyrics ================= */
-let lyricsReqId = 0; // guard against out-of-order responses on fast skips
+let lyricsReqId = 0;
 async function loadLyrics(song, { silent = false } = {}) {
   if (!song) return;
   const myReq = ++lyricsReqId;
@@ -670,8 +685,7 @@ async function loadLyrics(song, { silent = false } = {}) {
   }
   try {
     const d = await api(`/api/lyrics?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}&duration=${durationSec}&browseId=${encodeURIComponent(Player.lyricsBrowseId || '')}`);
-    if (myReq !== lyricsReqId) return; // a newer request superseded us
-    // never downgrade: keep existing synced lyrics if the retry found less
+    if (myReq !== lyricsReqId) return;
     if (Player.lyrics.synced && !d.synced) return;
     Player.lyrics = { ...d, lines: d.synced ? parseLRC(d.synced) : [] };
   } catch {
@@ -680,8 +694,7 @@ async function loadLyrics(song, { silent = false } = {}) {
   }
   renderLyrics();
 }
-/* retry once the real duration is known (player loaded after first attempt),
-   or when the first attempt found nothing */
+
 function maybeRetryLyrics() {
   const s = Player.current;
   if (!s || !Player.yt || !Player.ready || !Player.yt.getDuration) return;
@@ -756,7 +769,6 @@ function updateLyricHighlight(cur) {
   syncFloatLyric(line);
 }
 
-/* ================= now playing UI ================= */
 function renderNowPlaying() {
   const mini = Player.current;
   const np = Player.pending || Player.current;
@@ -915,35 +927,11 @@ function renderQueue() {
   $$('.btn-qrm', el).forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); removeQueued(Number(b.dataset.qi)); }));
   $$('.btn-qup', el).forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); moveQueued(Number(b.dataset.qi), -1); }));
   $$('.btn-qdn', el).forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); moveQueued(Number(b.dataset.qi), 1); }));
-  if (window.matchMedia('(min-width: 861px)').matches) {
-    $$('.track.q-user', el).forEach((row) => {
-      row.draggable = true;
-      row.addEventListener('dragstart', (e) => {
-        e.dataTransfer.setData('text/plain', row.dataset.qi);
-        e.dataTransfer.effectAllowed = 'move';
-        row.classList.add('dragging');
-      });
-      row.addEventListener('dragend', () => row.classList.remove('dragging'));
-      row.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; row.classList.add('drag-over'); });
-      row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-      row.addEventListener('drop', (e) => {
-        e.preventDefault();
-        row.classList.remove('drag-over');
-        const from = Number(e.dataTransfer.getData('text/plain'));
-        const to = Number(row.dataset.qi);
-        if (!Number.isFinite(from) || !Number.isFinite(to) || from === to) return;
-        if (from <= Player.index || to <= Player.index) return;
-        if (!Player.queue[from] || !Player.queue[from]._user || !Player.queue[to] || !Player.queue[to]._user) return;
-        const [item] = Player.queue.splice(from, 1);
-        Player.queue.splice(to, 0, item);
-        renderQueue();
-      });
-    });
-  }
   const clr = $('#q-clear', el);
   if (clr) clr.addEventListener('click', clearUserQueue);
   persistQueue();
 }
+
 async function loadRelated(force = false) {
   const el = $('#related-list');
   if (!el) return;
@@ -1013,7 +1001,6 @@ async function loadRelated(force = false) {
   if (sameSong()) renderFail();
 }
 
-/* ================= download (via converter service, direct save) ================= */
 const activeDownloads = new Set();
 function downloadFilename(song) {
   const t = displayTitle(song && song.title) || 'track';
@@ -1075,7 +1062,6 @@ async function downloadSong(song) {
   }
 }
 
-/* ================= rendering helpers ================= */
 function looksLikePlays(s) {
   return /pemutaran|plays|ditonton|views|x ditonton/i.test(String(s || ''));
 }
@@ -1296,7 +1282,6 @@ function previewSong(song) {
   updateLikeButtons();
   renderPlayButtons();
   resetNpSeek(song);
-  // keep Related for the song that's actually playing
 }
 function openSongNowPlaying(song) {
   if (!song || !song.videoId) return;
@@ -1315,7 +1300,6 @@ function openSongNowPlaying(song) {
   switchNPTab('player');
 }
 
-/* ================= router / views ================= */
 const NAV = [
   { id: 'home', label: 'Home', icon: 'i-home-o', iconActive: 'i-home', hash: '#/home' },
   { id: 'search', label: 'Search', icon: 'i-search', iconActive: 'i-search', hash: '#/search' },
@@ -1324,7 +1308,6 @@ const NAV = [
 ];
 function renderNav() {
   const html = NAV.map((n) => `<button class="nav-item" data-id="${n.id}" data-ic="${n.icon}" data-ica="${n.iconActive}" onclick="location.hash='${n.hash}'"><svg class="ic"><use href="#${n.icon}"/></svg><span>${n.label}</span></button>`).join('');
-  // desktop sidebar: only Home + Search (Spotify layout); library lives in its own box
   $('#nav-desktop').innerHTML = NAV.filter((n) => ['home', 'search', 'charts'].includes(n.id))
     .map((n) => `<button class="nav-item" data-id="${n.id}" data-ic="${n.icon}" data-ica="${n.iconActive}" onclick="location.hash='${n.hash}'"><svg class="ic"><use href="#${n.icon}"/></svg><span>${n.label}</span></button>`).join('');
   $('#nav-mobile').innerHTML = html;
@@ -1339,7 +1322,6 @@ function setActiveNav(id) {
   });
 }
 
-/* ---- Your Library sidebar (Spotify left rail) ---- */
 function renderSidebarLibrary() {
   const el = $('#lib-list');
   if (!el) return;
@@ -1411,7 +1393,6 @@ const skeletonHTML = `<div class="page-title">&nbsp;</div>` + Array(3).fill(`
   <div class="shelf"><div class="skeleton" style="width:180px;height:22px;margin-bottom:12px"></div>
   <div class="carousel">${Array(6).fill('<div><div class="skeleton" style="width:160px;height:160px"></div></div>').join('')}</div></div>`).join('');
 
-/* ---- Home ---- */
 async function viewHome(view) {
   view.innerHTML = skeletonHTML;
   const now = new Date();
@@ -1455,7 +1436,6 @@ async function viewHome(view) {
   loadMixForYou();
 }
 
-/* "Mix for you" — personalized-feel shelf built from your listening history (no account needed) */
 async function loadMixForYou() {
   const hist = Library.history;
   const seeds = [...Library.favorites, ...hist].filter((s) => s.videoId);
@@ -1474,7 +1454,6 @@ async function loadMixForYou() {
   } catch {}
 }
 
-/* ---- Search ---- */
 const SEARCH_TYPE_LABEL = { song: 'Songs', video: 'Videos', album: 'Albums', artist: 'Artists', playlist: 'Playlists', browse: 'More' };
 function pushRecentSearch(q) {
   q = String(q || '').trim();
@@ -1547,7 +1526,7 @@ function searchResultsHTML(sections) {
     if (!items.length) return;
     const title = SEARCH_TYPE_LABEL[t];
     html += (t === 'song' || t === 'video')
-      ? `<div class="shelf"><div class="shelf-title">${title}</dijoin('')}</div></div>`
+      ? `<div class="shelf"><div class="shelf-title">${title}</div><div class="track-list">${items.map((i) => trackRowHTML(i)).join('')}</div></div>`
       : `<div class="shelf"><div class="shelf-title">${title}</div>${carouselHTML(items.map(cardHTML).join(''))}</div>`;
   });
   return html || emptyHTML('No results', 'Try a different spelling or another artist, song, or playlist.', { ic: 'i-search' });
@@ -1674,7 +1653,6 @@ async function viewSearch(view, q = '', filter = null) {
   }
 }
 
-/* ---- Charts ---- */
 async function viewCharts(view) {
   view.innerHTML = skeletonHTML;
   const d = await api('/api/charts');
@@ -1694,10 +1672,8 @@ async function viewCharts(view) {
   bindItems(view);
 }
 
-/* Spotify browse-tile palette (fallback when YT colors are missing) */
 const MOOD_COLORS = ['#1db954','#e13300','#7358ff','#e8115b','#148a08','#dc148c','#bc5900','#8d67ab','#e91429','#1e3264','#537aa1','#af2896','#477d95','#ba5d07','#0d73ec','#8c1932'];
 
-/* ---- Moods ---- */
 async function viewMoods(view) {
   view.innerHTML = `<div class="page-title">Moods & genres</div><div class="loading-note">Loading…</div>`;
   const d = await api('/api/moods');
@@ -1706,13 +1682,11 @@ async function viewMoods(view) {
   bindMoods(view);
 }
 
-/* ---- Stats (local scrobble) ---- */
 function viewStats(view) {
   const st = Library.stats;
   const rows = Object.entries(st).map(([videoId, v]) => ({ videoId, ...v }));
   const totalPlays = rows.reduce((a, r) => a + r.plays, 0);
   const totalMin = Math.round(rows.reduce((a, r) => a + r.secs, 0) / 60);
-  // top artists
   const byArtist = {};
   rows.forEach((r) => {
     const a = (r.artist || 'Unknown').split(',')[0].trim() || 'Unknown';
@@ -1739,7 +1713,6 @@ function viewStats(view) {
   bindItems(view);
 }
 
-/* ---- Library ---- */
 function viewLibrary(view, tab) {
   const tabs = [['playlists', 'Playlists'], ['favorites', 'Favorites'], ['saved', 'Saved'], ['history', 'History'], ['stats', 'Stats']];
   if (tab === 'stats') { go('#/stats'); return; }
@@ -1792,7 +1765,6 @@ function viewLibrary(view, tab) {
   $$('[data-nav]', view).forEach((el) => el.addEventListener('click', () => go(el.dataset.nav)));
 }
 
-/* ---- import a public YT Music playlist/album into local library ---- */
 function openImportForm() {
   const modal = $('#modal');
   const body = $('#modal-body');
@@ -1856,7 +1828,6 @@ async function importFromLink(url) {
   else go('#/library');
 }
 
-/* ---- backup / restore whole local library as a JSON file ---- */
 function backupLibrary() {
   const data = {
     app: 'rich-music',
@@ -2018,7 +1989,6 @@ function viewLocalPlaylist(view, pid) {
   $('#pl-del').addEventListener('click', () => openDeletePlaylist(pid));
 }
 
-/* ---- Browse (album / playlist / artist / mood) ---- */
 async function viewBrowse(view, id, kind, extraParams) {
   view.innerHTML = skeletonHTML;
   const d = await api(`/api/browse?id=${encodeURIComponent(id)}${extraParams ? '&params=' + encodeURIComponent(extraParams) : ''}`);
@@ -2070,10 +2040,8 @@ async function viewBrowse(view, id, kind, extraParams) {
     });
     bsv.innerHTML = icon(Library.isSaved(id) ? 'i-save-f' : 'i-save') + `<span>${Library.isSaved(id) ? 'Saved' : 'Save'}</span>`;
   });
-  // playing track highlight handled implicitly on rerender
 }
 
-/* ================= song overflow menu ================= */
 function openSongMenu(song, opts = {}) {
   if (!song || !song.videoId) return;
   const modal = $('#modal');
@@ -2394,7 +2362,6 @@ function openDeletePlaylist(pid) {
   modal.classList.remove('hidden');
 }
 
-/* ================= add-to-playlist modal ================= */
 function openAddToPlaylist(song) {
   const modal = $('#modal');
   const body = $('#modal-body');
@@ -2440,12 +2407,11 @@ function openAddToPlaylist(song) {
 $('#modal-cancel').addEventListener('click', closeModal);
 $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
 
-/* ================= wire up controls ================= */
 $('#mini-play').addEventListener('click', (e) => { e.stopPropagation(); togglePlay(); });
 $('#mini-next').addEventListener('click', (e) => { e.stopPropagation(); nextTrack(false); });
 $('#mini-prev').addEventListener('click', (e) => { e.stopPropagation(); prevTrack(); });
 $('#mini-like').addEventListener('click', (e) => { e.stopPropagation(); if (Player.current) Library.toggleFav(Player.current); });
-/* open Now Playing from art / title / expand button (Spotify behaviour) */
+
 const openNP = (e) => {
   e.stopPropagation();
   Player.pending = null;
@@ -2460,7 +2426,7 @@ $('#mini-open').addEventListener('click', openNP);
 const openQueue = (e) => { e.stopPropagation(); openNowPlaying(); switchNPTab('queue'); };
 $('#mini-queue').addEventListener('click', openQueue);
 $('#mini-queue-m').addEventListener('click', openQueue);
-/* shuffle / repeat on the bar (synced with Now Playing buttons) */
+
 $('#mini-shuffle').addEventListener('click', (e) => {
   e.stopPropagation();
   Player.shuffle = !Player.shuffle;
@@ -2478,12 +2444,10 @@ $('#mini-repeat').addEventListener('click', (e) => {
   persistQueue();
   toast(['Repeat off', 'Repeat all', 'Repeat one'][Player.repeat]);
 });
-/* volume on the bar */
 $('#mini-volume').addEventListener('input', (e) => {
   if (Player.yt && Player.ready) Player.yt.setVolume(Number(e.target.value));
   $('#np-volume').value = e.target.value;
 });
-/* click-to-seek on the bar */
 $('#mini-bar').addEventListener('click', (e) => {
   if (Player.cued || !Player.yt || !Player.ready) return;
   const r = e.currentTarget.getBoundingClientRect();
@@ -2580,7 +2544,6 @@ document.addEventListener('keydown', (e) => {
   if (e.code === 'KeyP') { e.preventDefault(); toggleFloatWidget(); }
 });
 
-/* topbar back / forward (Spotify chrome) */
 $('#nav-back').addEventListener('click', () => history.back());
 $('#nav-fwd').addEventListener('click', () => history.forward());
 $('#lib-new').addEventListener('click', () => go('#/library'));
@@ -2607,7 +2570,6 @@ $('#miniplayer').addEventListener('click', (e) => {
   }, { passive: true });
 })();
 
-/* ================= floating widget / Picture-in-Picture ================= */
 Player.pipWin = null;
 Player.floatOn = false;
 
@@ -2793,7 +2755,6 @@ async function openPipWidget() {
     return false;
   }
 }
-
 
 let pipArtImg = null;
 let pipArtSrc = '';
@@ -3007,26 +2968,27 @@ function toggleFloatWidget() {
   else openFloatWidget();
 }
 
+// Perbaikan untuk mempertahankan pemutaran di iOS saat masuk ke background
 document.addEventListener('visibilitychange', () => {
-  if (!Player.floatOn || !Player.yt || !Player.ready) return;
-  try { Player.yt.playVideo(); } catch {}
-});
-setInterval(() => {
-  if (!Player.floatOn || !Player.yt || !Player.ready) return;
-  const st = Player.yt.getPlayerState && Player.yt.getPlayerState();
-  if (st === 2 && document.hidden) {
-    try { Player.yt.playVideo(); } catch {}
+  if (!Player.yt || !Player.ready) return;
+  if (document.hidden) {
+    try {
+      const st = Player.yt.getPlayerState && Player.yt.getPlayerState();
+      if (st === YT.PlayerState.PLAYING || st === YT.PlayerState.PAUSED) {
+        Player.yt.playVideo();
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.playbackState = 'playing';
+        }
+      }
+    } catch (e) {}
   }
-}, 1500);
+});
 
-
-/* cleanup: unregister any previously installed service worker */
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
   if (window.caches) caches.keys().then((ks) => ks.forEach((k) => k.startsWith('smw-') && caches.delete(k))).catch(() => {});
 }
 
-/* boot */
 (() => {
   const splash = $('#splash');
   if (!splash) return;
