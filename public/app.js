@@ -408,7 +408,7 @@ function restoreQueue() {
   renderPlayButtons();
   $('#miniplayer').classList.remove('hidden');
   document.body.classList.add('has-player', 'paused');
-  document.title = `${s.title} • Rich Music`;
+  document.title = `${s.title} • Pono Music`;
   applyTint(s.videoId || s.title);
   const shOn = Player.shuffle;
   $('#mini-shuffle') && $('#mini-shuffle').classList.toggle('on', shOn);
@@ -463,14 +463,14 @@ function startCurrent() {
   updateLikeButtons();
   $('#miniplayer').classList.remove('hidden');
   document.body.classList.add('has-player');
-  document.title = `${s.title} • Rich Music`;
+  document.title = `${s.title} • Pono Music`;
   applyTint(s.videoId || s.title);
   
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: s.title, 
       artist: s.artist || '',
-      album: 'Rich Music',
+      album: 'Pono Music',
       artwork: s.thumbnail ? [
         { src: s.thumbnail, sizes: '512x512', type: 'image/jpeg' },
         { src: s.thumbnail, sizes: '192x192', type: 'image/jpeg' }
