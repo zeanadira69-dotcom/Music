@@ -283,7 +283,12 @@ window.onYouTubeIframeAPIReady = () => {
           if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
         }
         if (e.data === YT.PlayerState.PAUSED) {
-          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+          // iOS sometimes pauses the hidden iframe by itself (route change / lock).
+          // If the user did not ask for the pause, resume right away.
+          const recentRoute = Date.now() - _lastRouteAt < 4000;
+          if (!Player.userPaused && !Player.cued && Player.current && (recentRoute || document.hidden)) {
+            setTimeout(() => { try { if (!Player.userPaused) Player.yt.playVideo(); } catch {} }, 150);
+          } else if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
         }
         if (e.data === YT.PlayerState.BUFFERING) applyPlaybackQuality();
         document.body.classList.toggle('paused', e.data !== YT.PlayerState.PLAYING);
@@ -436,6 +441,7 @@ function moveQueued(i, dir) {
 }
 
 function startCurrent() {
+  Player.userPaused = false;
   Player.cued = false;
   Player.pending = null;
   const s = Player.current;
@@ -481,12 +487,14 @@ function startCurrent() {
     navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack(false));
     navigator.mediaSession.setActionHandler('play', () => {
       if (Player.yt && Player.ready) {
+        Player.userPaused = false;
         Player.yt.playVideo();
         navigator.mediaSession.playbackState = 'playing';
       }
     });
     navigator.mediaSession.setActionHandler('pause', () => {
       if (Player.yt && Player.ready) {
+        Player.userPaused = true;
         Player.yt.pauseVideo();
         navigator.mediaSession.playbackState = 'paused';
       }
@@ -576,8 +584,8 @@ function togglePlay() {
   }
   if (!Player.yt || !Player.ready) return;
   const st = Player.yt.getPlayerState();
-  if (st === YT.PlayerState.PLAYING) Player.yt.pauseVideo();
-  else Player.yt.playVideo();
+  if (st === YT.PlayerState.PLAYING) { Player.userPaused = true; Player.yt.pauseVideo(); }
+  else { Player.userPaused = false; Player.yt.playVideo(); }
 }
 function playPendingSong() {
   const s = Player.pending;
@@ -1352,7 +1360,9 @@ function renderSidebarLibrary() {
 }
 const go = (hash) => { location.hash = hash; };
 
+let _lastRouteAt = 0;
 async function route() {
+  _lastRouteAt = Date.now();
   const hash = location.hash || '#/home';
   const [path, qs] = hash.slice(2).split('?');
   const parts = path.split('/');
@@ -2211,6 +2221,7 @@ function openSleepTimer() {
     $('#np-sleep') && $('#np-sleep').classList.remove('on');
     if (m > 0) {
       Player.sleepTimer = setTimeout(() => {
+        Player.userPaused = true;
         Player.yt && Player.yt.pauseVideo();
         Player.sleepTimer = null;
         $('#np-sleep') && $('#np-sleep').classList.remove('on');
