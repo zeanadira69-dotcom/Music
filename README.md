@@ -1,28 +1,26 @@
 # Pono Music
 
-**Pemutar musik web gratis** bergaya Spotify, katalog [YouTube Music](https://music.youtube.com). Tanpa akun.
+**Pemutar musik web gratis** bergaya Spotify dengan katalog [YouTube Music](https://music.youtube.com). Tanpa akun.
 
 - **Website:** [pono-music.vercel.app](https://pono-music.vercel.app)
 - **Repo asli:** [github.com/ramax100/YT-Music-Mod](https://github.com/ramax100/YT-Music-Mod)
 
-> ## Tentang repo ini
->
-> Repo ini adalah **fork** dari proyek **Rich Music (YT-Music-Mod)** buatan [ramax100](https://github.com/ramax100).
-> Saya **hanya mengubah sedikit** dari versi aslinya (nama tampilan dan logo). Semua fitur dan kode inti tetap milik pembuat aslinya, dan seluruh kredit atas proyek ini kembali kepada beliau.
->
-> Ingin versi aslinya? Kunjungi **[github.com/ramax100/YT-Music-Mod](https://github.com/ramax100/YT-Music-Mod)**.
+> **Proyek ini adalah fork.** Seluruh kode dan fitur berasal dari [YT-Music-Mod (Rich Music)](https://github.com/ramax100/YT-Music-Mod) buatan **ramax100**. Terima kasih kepada pembuat aslinya.
 
 ---
 
-## Yang berbeda dari versi asli
+## Apa yang berbeda dari repo asli
 
-| Bagian | Versi asli | Fork ini |
-| --- | --- | --- |
-| Nama tampilan | Rich Music | Pono Music |
-| Logo & ikon | Logo bawaan | Logo baru (`public/logo*.png`, `favicon-32.png`, `apple-touch-icon.png`) |
-| Alamat website | richmusic.vercel.app | pono-music.vercel.app |
+Perubahannya sedikit. Semua fitur dan cara kerja aplikasi tetap sama dengan aslinya.
 
-Selain tabel di atas, struktur, fitur, dan cara kerja aplikasi **tidak diubah**.
+| Yang diubah | Keterangan |
+| --- | --- |
+| **Nama** | Dari *Rich Music* menjadi **Pono Music** |
+| **Domain** | Menggunakan `pono-music.vercel.app` |
+| **Logo** | Logo baru (headphone dengan nota musik, latar transparan) |
+| **iPhone** | Musik bisa tetap berjalan di latar belakang di iPhone |
+
+Selain empat hal di atas, tidak ada perubahan lain.
 
 ---
 
@@ -36,93 +34,28 @@ Tidak berafiliasi dengan YouTube, Google, atau Spotify.
 
 ---
 
-## Cara memakai website
+## Cara memakai
 
 1. Buka **[pono-music.vercel.app](https://pono-music.vercel.app)**
 2. Cari lagu, atau pilih dari Home / Charts / Browse all
-3. Lagu pertama langsung play. Kalau klik lagu lain, Now Playing menampilkan lagu baru, tekan **Play** untuk mengganti putaran
-4. Ikon hati = favorit. **Playlist** = simpan ke folder. Di halaman album/artis, **Save** masuk tab Saved
-5. Pindah HP? Library → **Backup**, di perangkat baru **Restore**
-
-### Desktop / PC
-
-Di laptop atau komputer, Pono Music langsung siap. Buka situsnya, pilih lagu, dan putar. Tidak perlu pengaturan tambahan.
-
-### Putar di latar belakang (Android)
-
-Musik tetap jalan saat layar terkunci atau pindah aplikasi, **tanpa mode desktop**.
-
-Buka [pono-music.vercel.app](https://pono-music.vercel.app) di **[Brave Browser](https://play.google.com/store/apps/details?id=com.brave.browser)**, putar lagu, lalu keluar dari tab atau kunci HP. Audio tetap berlanjut.
-
-Di Chrome, aktifkan **⋮ → Situs desktop** jika ingin hasil serupa.
+3. Ikon hati = favorit. **Playlist** = simpan ke folder
+4. Pindah HP? Library → **Backup**, di perangkat baru **Restore**
 
 ---
 
 ## Fitur
 
-### Home
-- Sapaan sesuai waktu dan tanggal
-- Recently played
-- Mix for you: rekomendasi dari favorit & riwayat
-- Liked songs, playlist lokal, item Saved
-- Rak YouTube Music
-- Carousel geser; di desktop ada panah
-
-### Search
-- Saran otomatis saat mengetik
-- Filter: All, Songs, Videos, Albums, Artists, Playlists
-- Top result sebagai kartu besar
-- Hasil dikelompokkan (lagu, album, artis, playlist)
-- Riwayat pencarian
-- Browse all: mood & genre
-
-### Charts
-- Tangga lagu, playlist genre, artis teratas
-
-### Library
-Tanpa login, tersimpan di perangkat ini.
-
-| Tab | Isi |
-| --- | --- |
-| Playlists | Playlist buatanmu + kartu Liked Songs |
-| Favorites | Lagu yang di-heart, Play all / Shuffle |
-| Saved | Album, playlist, artis yang di-Save |
-| History | Yang baru diputar |
-| Stats | Total putar, menit, top artis, lagu terbanyak |
-
-- New playlist
-- Import dari link YouTube Music (playlist, album, artis, lagu)
-- Backup / Restore file JSON
-- Rename, hapus, urutkan lagu (panah atau drag di desktop)
-
-### Player
-- Streaming YouTube IFrame (audio YouTube Music)
-- Quality di menu ⋮, bisa dinaikkan ke YouTube max
-- Preview lagu lain tanpa memutus yang sedang play
-- Shuffle & Repeat (mati / semua / satu)
-- Kecepatan 0.5×–2×
-- Antrian: Your queue dulu, lalu radio. Tersimpan saat refresh
-- Play next / Add to queue
-- Related: lagu, album, playlist, artis
-- Lirik sinkron, tap baris untuk loncat
-- Share (menu HP atau salin tautan)
-- Download MP3
-- SponsorBlock: skip intro/sponsor (bisa dimatikan)
-- Sleep timer
-- Widget mengambang + Picture-in-Picture
+- Pencarian dengan saran otomatis, filter lagu/video/album/artis/playlist
+- Home, Charts, dan rekomendasi dari favorit & riwayat
+- Library lokal: playlist, favorit, riwayat, statistik, Backup / Restore
+- Import dari link YouTube Music
+- Antrian, shuffle, repeat, kecepatan putar 0.5×–2×
+- Lirik sinkron
+- Download MP3 dan SponsorBlock
+- Sleep timer, widget mengambang, Picture-in-Picture
 - Mode gelap / terang
-- Nama artis bisa diklik ke halaman artis
 
-### Pintasan keyboard
-
-| Tombol | Aksi |
-| --- | --- |
-| `Space` | Play / Pause |
-| `Shift` + `→` | Berikutnya |
-| `Shift` + `←` | Sebelumnya |
-| `Esc` | Tutup Now Playing |
-| `L` | Ganti tema |
-| `P` | Widget |
+Daftar fitur lengkap ada di [repo asli](https://github.com/ramax100/YT-Music-Mod).
 
 ---
 
@@ -143,14 +76,9 @@ Buka **http://localhost:3000**
 
 ## Deploy ke Vercel
 
-```bash
-npm i -g vercel
-cd Music
-vercel login
-vercel --prod
-```
+Di dashboard Vercel: **Add New → Project → Import Git Repository** → pilih repo ini → **Deploy**.
 
-Atau di dashboard Vercel: **Import Git Repository** → pilih repo ini → Deploy. Setiap commit baru ke branch `main` akan otomatis di-deploy ulang.
+Setiap commit baru ke branch `main` akan otomatis dideploy ulang.
 
 ---
 
@@ -168,18 +96,8 @@ Music/
 
 ---
 
-## Kredit
+## Lisensi dan kredit
 
-Proyek ini berasal dari **Rich Music / YT-Music-Mod** karya **[ramax100](https://github.com/ramax100)**.
+Proyek asli dinyatakan **gratis dan bebas dipakai**: dijalankan, dibagikan, diubah, dan dideploy ulang. Fork ini mengikuti ketentuan yang sama.
 
-- Repo asli: [github.com/ramax100/YT-Music-Mod](https://github.com/ramax100/YT-Music-Mod)
-- Website asli: [richmusic.vercel.app](https://richmusic.vercel.app)
-- Telegram pembuat asli: [t.me/ChRichStore](https://t.me/ChRichStore)
-
-Terima kasih kepada pembuat aslinya yang sudah membuka proyek ini untuk dipakai dan dikembangkan bersama.
-
----
-
-## Lisensi
-
-Mengikuti repo asli: **gratis dan bebas dipakai**. Jalankan, bagikan, ubah, dan deploy ulang sesukamu. Tidak ada biaya. Mohon tetap mencantumkan kredit kepada pembuat aslinya.
+Kode asli oleh **ramax100** — [YT-Music-Mod](https://github.com/ramax100/YT-Music-Mod).
